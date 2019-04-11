@@ -1,31 +1,12 @@
 # Transformer in Pytorch
-An implementation of [Attention is all you need](https://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf) with [Pytorch](https://pytorch.org). An [early version](https://github.com/tnq177/nmt_text_from_non_native_speaker) of this code was used for [Neural Machine Translation of Text from Non-Native Speakers
-](https://arxiv.org/abs/1808.06267).
+[Toan Q. Nguyen](http://tnq177.github.io), University of Notre Dame.  
 
-## Hyperparameters
-To train a new model, write new config function in ``configurations.py``. I know all of them look the same and can be refactored but I'm lazy.  
+An implementation of [Attention Is All You Need](https://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf) with [PyTorch](https://pytorch.org). An [early version](https://github.com/tnq177/nmt_text_from_non_native_speaker) of this code was used for [Neural Machine Translation of Text from Non-Native Speakers
+](https://arxiv.org/abs/1808.06267).  
 
-Many of hyperparameters are pretty important, take a look at ``all_constants.py`` before read on:
+This code implements Neural Machine Translation system called Transformer from the paper [Attention Is All You Need](https://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf). It expects bitext data of format ``{train, dev, test}.{src_lang, trg_lang}``. During training, the model is validated and best checkpoint can be saved based on either dev BLEU score or (label smoothed) dev perplexity. When training is finished, the best checkpoint is reloaded and used for decoding on test file. We support batched beam search, but currently it's quite adhoc. We assume that during training, if a ``batch_size`` doesn't cause OOM, during beam search we can use a batch size of ``batch_size//beam_size`` (see ``get_trans_input`` function in ``data_manager.py``).  
 
-* ``norm_in``: If it's False, it's the default Transformer's computational sequence, that is, we do dropout-->residual-add-->layernorm. If false, it's goes layernorm-->dropout-->residual-add. See below image for visualization. This is fairly important. I've encountered a bunch of datasets (LORELEI) that doing the former can cause all sort of problem and make it impossible to train a 6-layer model. The latter is the right way to do residual connection which also enables us to **not using warmup at all**. Note that this computational sequence is already noted in [best of both worlds paper](https://arxiv.org/pdf/1804.09849.pdf) or Tensor2Tensor implementation.  ![alt text](./residual.jpeg "Residual")
-
-* ``fix_norm``: implement the fixnorm in this [paper](https://aclweb.org/anthology/N18-1031) (though a tad different, like we don't normalize the final output from decoder since it can be underfitting, or instead of l2 norm, we normalize. Both give the same performance though). I've found that it no longer helps if we're using subword units, transformer and enough data (>100k sentences). But it doesn't hurt, and it trains really fast in the first 10 epochs or so so if you're on a budget, give it a try.
-
-* warmup: There are ``ORG_WARMUP``, ``FIXED_WARMUP``, ``NO_WARMUP``, and ``UPFLAT_WARMUP``. The ``ORG_WARMUP`` follows the formula in [original paper](https://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf). ``FIXED_WARMUP`` means going from ``start_lr`` to ``lr`` in some warmup steps then decays with inverse sqrt of update steps. ``NO_WARMUP`` means no warmup at all, and learning rate is decayed if dev performance is not improving. We can decide to decay either with dev BLEU or dev perp by changing the option ``val_by_bleu``. We can control the decay patience for ``NO_WARMUP`` with ``patience`` option too.  
-
-* we do batched beam search, pretty fast.  
-
-* ``tied_mode``: It's best to always tie target input and output embedding -> ``TRG_TIED``. Sometimes, we want to tie all three, thus ``ALL_TIED``. Sometimes, the source and target languages only share a subset of their vocabs, so we will only share embeddings for the common subwords. To do this set ``share_vocab`` to ``False``. For similar languages such as English, German, Spanish... set it to ``True`` since they share like 90+% of their vocabs.  
-
-* ``max_train_length``: Just set it to some really high value, like 1000 by default. This use all training sentences of length up to this value. Transformer can't go beyond its known length during training, thus using up all long sentences is important. I find it impossible to reproduce WMT14 En2De result (using fairseq's data) without setting this to high value. I tried 256 and it was 1 BLEU below.  
-
-* ``vocab_size``: If you're using BPE, just set them all to 0, which means we use the whole vocab. Using BPE reduces the vocab size significantly, so there's no need to worry. In my experience, if your dataset is of < 500k sentences, and if src and tgt languages are similar, use BPE from 8000-12000 are sufficient.  
-
-* ``word_drop``: This is [word dropout](https://www.aclweb.org/anthology/W16-2323) but instead of setting word embeds to zero, we replace dropped tokens with UNK. I find this help with every low-resource dataset I've worked on (<500k sents), but makes training slower for high resource (WMT14 EnDe 4.5M sents). 
-
-
-## Training
-I've tested only with python3.6 & pytorch1.0. My rule of thumb for data preprocessing is (learned from fairseq's code):  
+My rule of thumb for data preprocessing is (learned from fairseq's code):  
 
 * tokenize data
 * length-limit around 80 tokens
@@ -33,29 +14,81 @@ I've tested only with python3.6 & pytorch1.0. My rule of thumb for data preproce
 * apply bpe
 * use all of them (**don't limit training sentence length again**)
 
-After you've preprocessed data, create a folder in ``nmt/data/model_name`` (see ``data_dir`` option in config function). Then to train:  
+To train a new model:  
+* Write a new configuration function in ``configurations.py``  
+* Put preprocessed data in ``nmt/data/model_name`` or as configured in ``data_dir`` option in your configuration function  
+* Run: ``python3 -m nmt --proto config_name``  
 
-``python3 -m nmt --proto config_func_name``  
+The best checkpoint is saved to ``nmt/saved_models/model_name/model_name-SCORE.pth``. To decode, run ``python3 -m nmt --proto config_name --model-file path_to_checkpoint --input-file path_to_file_to_decode``.  
 
-Checkpoints are saved in ``nmt/saved_models/model_name``. The ``n_best`` option is incorrect, just set it to 1 and it'll always save the best checkpoint. Currently I save checkpoint along with its best score on dev, which means multiple checkpoints might have the same name and that causes overwriting old checkpoint, thus n_best > 1 doesn't guarantee more than 1 best checkpoints. Anw, just set it to 1.  
+Please note that the ``n_best`` option is incorrect if set to > 1 as I currently save the best checkpoint in the format ``model_name-SCORE.pth`` so if two checkpoints have the same score, there is overwritten. However, setting to 1 will always save the best checkpoint.  
 
-To decode:  
+This code has been tested with only Python3.6 and PyTorch 1.0
+## Hyperparameters
+Many of hyperparameters are pretty important, take a look at ``all_constants.py`` before read on:
 
-``python3 -m nmt --proto config_func_name --model-file path_to_checkpoint --input-file path_to_input_file``  
+* ``norm_in``: If it's False, it's the default Transformer's computational sequence, that is, we do dropout-->residual-add-->layernorm. If false, it's goes layernorm-->dropout-->residual-add. See below image for visualization. The latter is noted in [The Best of Both Worlds: Combining Recent Advances in Neural Machine Translation](https://arxiv.org/pdf/1804.09849.pdf) for ensuring good model performance. ![alt text](./residual.jpeg "Residual")
+
+* ``fix_norm``: implement the fixnorm in this [paper](https://aclweb.org/anthology/N18-1031) (though a tad different)
+
+* warmup: There are ``ORG_WARMUP``, ``FIXED_WARMUP``, ``NO_WARMUP``, and ``UPFLAT_WARMUP``. 
+    - The ``ORG_WARMUP`` follows the formula in [original paper](https://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf).  
+    - ``FIXED_WARMUP`` means going from ``start_lr`` to ``lr`` in some warmup steps then decays with inverse sqrt of update steps.  
+    - ``NO_WARMUP`` means no warmup at all, and learning rate is decayed if dev performance is not improving. We can decide to decay either with dev BLEU or dev perp by changing the option ``val_by_bleu``. We can control the decay patience for ``NO_WARMUP`` with ``patience`` option too.  
+    - ``UPFLAT_WARMUP`` means learning rate increases linearly like ``FIXED_WARMUP`` then stays there and decays only if dev performance is not improving like ``NO_WARMUP``.  
+
+* ``tied_mode``:
+    - ``TRG_TIED``: Tie target input and output embeddings
+    - ``ALL_TIED``: Tie source embedding and target input, output embeddings
+    - ``share_vocab``: For ``ALL_TIED``. If False, we only share the embeddings for common types between source and target vocabularies. This is done by simply masking out those not in target vocabulary in the output layer before softmax (set to -inf). If True, we don't do the masking.
+
+* ``max_train_length``: The maximum length of training sentences. Any sentence pair of length less than this is discarded during training.
+
+* ``vocab_size``: If set to 0, it means we don't do vocabulary cut-off.
+
+* ``joint_vocab_size``: Similar vocab size but for the joint vocabulary when we use ``ALL_TIED``.
+
+* ``word_drop``: This is [word dropout](https://www.aclweb.org/anthology/W16-2323) but instead of setting word embeds to zero, we replace dropped tokens with UNK. 
+
+### Suggestion
+#### General
+For low-resource (<500k sentences), try ``word_drop = 0.1``, ``dropout=0.3``. For datasets of around 100k-500k sentences, I find BPE of 8k-12k is enough. With this small vocabulary size, just set ``vocab_size`` and ``joint_vocab_size`` to 0 which means we use all of them. If languages are similar, such as English and German, their subword vocabs are >90+% overlapped so set ``share_vocab`` to True.
+
+I find gradient clipping at 1.0 helps stabilize training a bit and yields a small improvement in perplexity, so I always do that. Long sentences are important resource for Transformer since it doesn't seem to generalize well to longer sentences than those seen during training (see [Training Tips for the Transformer Model](https://ufal.mff.cuni.cz/pbml/110/art-popel-bojar.pdf)). For this reason, I suggest to set ``max_train_length`` to high value such as 1000.  
+
+I find ``fix_norm`` no longer helps with Transformer + BPE. However, it speeds up training a lot in early epochs and the final performance is either slightly better or the same so give it a try.
+
+
+#### To Norm or Not To Norm
+Section 3 of [Identity Mappings in Deep Residual Networks](https://arxiv.org/pdf/1603.05027.pdf) suggests residual connection should be left untouched for healthy back-propagation. I conjecture this is why doing dropout-->residual-add-->layernorm (left side of above figure, let's call it NormRes) is difficult to train without warmup. On the other hand, with layernorm-->dropout-->residual-add (right side of above figure, let's call it TrueRes), we actually don't need warmup at all. However, in order to achieve good performance, it is important to still decay the learning rate. We choose to decay if the performance on dev set is not improving over some ``patience`` previous validations. We often set ``patience`` to 3.
+
+Below figure shows the dev BLEU curve for Hungarian-English (from LORELEI) with different model sizes and different warmup steps. Note that for all TrueRes models we don't do warmup. We can see that while the NormRes learns well with 4 layers, going to 6 layers causes a huge drop in performance. With TrueRes, we can also train a 6-layer model for this dataset which gives almost 2 BLEU gain.
+
+![alt text](./hu2en_bleus_curve.png "hu2en")
+
+The story is quite different with Arabic-English (and other TED datasets) though. For this dataset, both NormRes and TrueRes end up at about the same BLEU score. However, we can see that NormRes is very sensitive to the warmup step. Note that the TED talk datasets are fairly big (around 200k examples each) so I always use 6 layers.
+![alt text](./ar2en_bleus_curve.png "ar2en")
+
+#### How long should we train
+It's common to train Transformer for about 100k iterations. This works out to be around 4-50 epochs for Arabic-English. However, we can see that from epoch 50th to 100th we can still get some good gain. Note that for all models here we use batch size of 4096 tokens instead of 25k tokens. My general rule of thumb is for dataset of around 50k-500k examples, we should train around 100 epochs. Coming from LSTM, Transformer is so fast training a bit longer still doesn't seem to take much time. See table below for some stats:  
+
+|                                         | ar2en | de2en | he2en | it2en |
+|-----------------------------------------|-------|-------|-------|-------|
+| # examples                              | 212k  | 166k  | 210k  | 202k  |
+| # target tokens                         | 5.1M  | 3.8M  | 5M    | 4.7M  |
+| Training speed (# target tokens/second) | 10.2k | 9.2k  | 10.2k | 9.3k  |
+| Total time for 100 epochs (hours)       | ~19   | ~16   | ~18   | ~20   |  
 
 
 ## Benchmarks
-The most important thing I've learned while working on this code is we **don't need warmup at all** if **we set norm_in to True**. I find this fact is pretty data-dependent. That is, for some dataset such as the TED talk datasets, ``norm_in`` True or False doesn't matter much if we do careful warmup, but this breaks for some LORELEI datasets. That said, ``norm_in`` to True allows us to not use warmup at all in most cases and the performance is just the same or even better for some LORELEI datasets. The key, though, is to decay learning rate. I use the good old heuristic way: scale down learning rate by some factor (0.8) if dev performance is not improving compared to previous ``patience`` (e.g. 3) validations.
-
-Below are some benchmarks and comparison between this code and some published numbers. Note that **THE COMPARISON IS NOT FAIR** since some use LSTM, some may have trained less, and so on. I always use 6 layers, 8 heads, 512D (Transformer base) unless stated otherwise. My rule of thumb is for datasets less than 10k sentences, train 300 epochs. For 50k, you can go 100-200 epochs. For 100k-500k, 100 epochs are enough. Coming from LSTM, I find transformer so fast that if training a bit more = taking a few more hours still doesn't matter much. The IWSLT De-En has about 166k sentences, using batch size of 4096, it took me 15 hours to cycle 100 epochs using a single 1080ti GPU. I don't have much experience with high-resource languages or using large batch size even though I did get 27.4 for WMT14 EnDe if trained for 24 epochs which took about 6 days using one 1080ti. **All ``this-code`` numbers are without warmup**.  
-
+Below are some benchmarks and comparison between this code and some published numbers. For all ``this-code`` models, we don't use warmup, start out with learning rate 3x10<sup>-4</sup>, and decay with factor 0.8 if dev BLEU is not improving compared to previous ``patience=3`` validations.
 
 ### LORELEI benchmarks
 All use 8k BPEs. Detokenized BLEU.
 
 |                                                            | ha   | hu   | tu   | uz   |
 |------------------------------------------------------------|------|------|------|------|
-| [Nguyen and Chiang](https://aclweb.org/anthology/N18-1031) | 22.3 | 27.9 | 22.2 | 21   |
+| [Nguyen and Chiang](https://aclweb.org/anthology/N18-1031), LSTM | 22.3 | 27.9 | 22.2 | 21   |
 | this-code (4layers, 4heads)                                | 25.2 | 30.2 | 24.1 | 24.1 |
 | this-code (6layers, 8heads)                                | 24.2 | 32   | 24.6 | 24.7 |
 | this-code + fixnorm (6layers, 8heads)                      | 25.1 | 31.8 | 25.5 | 24.9 |
@@ -89,7 +122,3 @@ Parts of code/scripts are borrowed/inspired from:
 * https://github.com/mila-iqia/blocks
 * https://github.com/moses-smt/mosesdecoder
 
-and thanks Kyunghyun Cho for making me switch from Tensorflow to Pytorch, it was life-changing.
-
-## Author
-[Toan Q. Nguyen](http://tnq177.github.io), University of Notre Dame

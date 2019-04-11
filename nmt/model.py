@@ -22,8 +22,6 @@ class Model(nn.Module):
         fix_norm = self.config['fix_norm']
         max_pos_length = self.config['max_pos_length']
         learned_pos = self.config['learned_pos']
-        embed_init_type = self.config['embed_init_type']
-        embed_init_range = self.config['embed_init_range']
 
         # get positonal embedding
         if not learned_pos:
@@ -50,16 +48,8 @@ class Model(nn.Module):
             self.src_embedding.weight = self.trg_embedding.weight
 
         if not fix_norm:
-            if embed_init_type == ac.EMBED_NORMAL:
-                nn.init.normal_(self.src_embedding.weight, mean=0, std=embed_dim ** -0.5)
-                nn.init.normal_(self.trg_embedding.weight, mean=0, std=embed_dim ** -0.5)
-            else:
-                nn.init.uniform_(self.src_embedding.weight, a=-embed_init_range, b=embed_init_range)
-                nn.init.uniform_(self.trg_embedding.weight, a=-embed_init_range, b=embed_init_range)
-
-                if embed_init_type == ac.EMBED_UNIFORM_SCALE:
-                    self.src_embedding.weight.data = F.normalize(self.src_embedding.weight.data, dim=-1)
-                    self.trg_embedding.weight.data = F.normalize(self.trg_embedding.weight.data, dim=-1)
+            nn.init.normal_(self.src_embedding.weight, mean=0, std=embed_dim ** -0.5)
+            nn.init.normal_(self.trg_embedding.weight, mean=0, std=embed_dim ** -0.5)
         else:
             d = 0.01 # pure magic
             nn.init.uniform_(self.src_embedding.weight, a=-d, b=d)
