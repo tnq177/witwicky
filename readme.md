@@ -101,10 +101,12 @@ It's common to train Transformer for about 100k iterations. This works out to be
 
 |                                         | ar2en | de2en | he2en | it2en |
 |-----------------------------------------|-------|-------|-------|-------|
-| # examples                              | 212k  | 166k  | 210k  | 202k  |
-| # target tokens                         | 5.1M  | 3.8M  | 5M    | 4.7M  |
+| # train examples                        | 212k  | 166k  | 210k  | 202k  |
+| # dev examples                          | 4714  | 4148  | 4515  | 4547  |
+| # test examples                         | 5953  | 4491  | 5508  | 5625  |
+| # train target tokens                   | 5.1M  | 3.8M  | 5M    | 4.7M  |
 | Training speed (# target tokens/second) | 10.2k | 9.2k  | 10.2k | 9.3k  |
-| Total time for 100 epochs (hours)       | ~19   | ~16   | ~18   | ~20   |  
+| Total time for 100 epochs (hours)       | ~19   | ~16   | ~18   | ~20   |    
 
 
 ## Benchmarks
