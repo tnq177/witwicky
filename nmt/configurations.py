@@ -72,6 +72,8 @@ def sk2en():
     config['src_lang']          = 'sk'
     config['trg_lang']          = 'en'
     config['data_dir']          = './nmt/data/sk2en'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     return config
 
 
@@ -83,6 +85,8 @@ def en2vi():
     config['src_lang']          = 'en'
     config['trg_lang']          = 'vi'
     config['data_dir']          = './nmt/data/en2vi'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     return config
 
 
@@ -94,6 +98,8 @@ def ar2en():
     config['src_lang']          = 'ar'
     config['trg_lang']          = 'en'
     config['data_dir']          = './nmt/data/ar2en'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     config['tie_mode']          = ac.TRG_TIED
     config['share_vocab']       = False
     return config
@@ -107,6 +113,8 @@ def de2en():
     config['src_lang']          = 'de'
     config['trg_lang']          = 'en'
     config['data_dir']          = './nmt/data/de2en'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     return config
 
 
@@ -118,6 +126,8 @@ def he2en():
     config['src_lang']          = 'he'
     config['trg_lang']          = 'en'
     config['data_dir']          = './nmt/data/he2en'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     config['tie_mode']          = ac.TRG_TIED
     return config
 
@@ -130,6 +140,8 @@ def it2en():
     config['src_lang']          = 'it'
     config['trg_lang']          = 'en'
     config['data_dir']          = './nmt/data/it2en'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     return config
 
 
@@ -141,6 +153,8 @@ def en2ja():
     config['src_lang']          = 'en'
     config['trg_lang']          = 'ja'
     config['data_dir']          = './nmt/data/en2ja'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     config['tie_mode']          = ac.TRG_TIED
     return config
 
@@ -153,6 +167,8 @@ def wmt14_en2de():
     config['src_lang']          = 'en'
     config['trg_lang']          = 'de'
     config['data_dir']          = './nmt/data/en2de'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     config['dropout']           = 0.1
     config['word_dropout']      = 0.0
     config['joint_vocab_size']  = 32768
@@ -169,6 +185,8 @@ def en2de():
     config['src_lang']          = 'en'
     config['trg_lang']          = 'de'
     config['data_dir']          = './nmt/data/en2de'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     return config
 
 
@@ -180,6 +198,8 @@ def ha2en():
     config['src_lang']          = 'ha'
     config['trg_lang']          = 'en'
     config['data_dir']          = './nmt/data/ha2en'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     return config
 
 
@@ -191,6 +211,8 @@ def tu2en():
     config['src_lang']          = 'tu'
     config['trg_lang']          = 'en'
     config['data_dir']          = './nmt/data/tu2en'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     return config
 
 
@@ -202,6 +224,8 @@ def uz2en():
     config['src_lang']          = 'uz'
     config['trg_lang']          = 'en'
     config['data_dir']          = './nmt/data/uz2en'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     return config
 
 
@@ -213,4 +237,6 @@ def hu2en():
     config['src_lang']          = 'hu'
     config['trg_lang']          = 'en'
     config['data_dir']          = './nmt/data/hu2en'
+    config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
+    config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
     return config
