@@ -4,43 +4,85 @@ from __future__ import division
 import os
 import nmt.all_constants as ac
 
+"""You can add your own configuration function to this file and select
+it using `--proto function_name`."""
 
 def base_config():
     config = {}
 
+    ### Locations of input/output files
+    
+    # The name of the model
     config['model_name']        = 'model_name'
-    config['save_to']           = './nmt/saved_models/{}'.format(config['model_name'])
+
+    # Source and target languages
+    # Input files should be named with these as extensions
     config['src_lang']          = 'src_lang'
     config['trg_lang']          = 'trg_lang'
-    config['data_dir']          = './nmt/data/model_name'
+
+    # Directory to read input files from
+    config['data_dir']          = './nmt/data/{}'.format(config['model_name'])
+    
+    # Directory to save models and other outputs in
+    config['save_to']           = './nmt/saved_models/{}'.format(config['model_name'])
+
+    # Pathname of log file
     config['log_file']          = './nmt/DEBUG.log'
+
+    ### Model options
+    
+    # Filter out sentences longer than this (minus one for bos/eos)
+    config['max_train_length']  = 1000
+    
+    # Vocabulary sizes
+    config['src_vocab_size']    = 0
+    config['trg_vocab_size']    = 0
+    config['joint_vocab_size']  = 0
+    config['share_vocab']       = False
+
+    # Normalize word embeddings (Nguyen and Chiang, 2018)
     config['fix_norm']          = False
+
+    # Tie word embeddings
+    config['tie_mode']          = ac.ALL_TIED
+
+    # Whether to learn position encodings
+    config['learned_pos']       = False
+    # Position encoding size
+    config['max_pos_length']    = 1024
+    
+    # Layer sizes
     config['embed_dim']         = 512
     config['ff_dim']            = 512 * 4
     config['num_enc_layers']    = 6
     config['num_enc_heads']     = 8
     config['num_dec_layers']    = 6
     config['num_dec_heads']     = 8
-    config['norm_in']           = True # if False, dropout->add->norm (orgpaper), else norm->dropout->add
-    config['learned_pos']       = False
-    config['max_pos_length']    = 1024 # don't ever let me go further than this pls
-    config['max_train_length']  = 1000 # actually can go to 1023 (length + special token eos/bos)
+
+    # Whether residual connections should bypass layer normalization
+    # if True, layer-norm->dropout->add
+    # if False, dropout->add->layer-norm (as in original paper)
+    config['norm_in']           = True
+
+    ### Dropout/smoothing options
+    
     config['dropout']           = 0.3
     config['word_dropout']      = 0.1
+    config['label_smoothing']   = 0.1
+    
+    ### Training options
+    
     config['batch_sort_src']    = True
     config['batch_size']        = 4096
     config['weight_init_type']  = ac.XAVIER_NORMAL
-    config['max_epochs']        = 100
-    config['validate_freq']     = 1.0 # eval every [this many] epochs
-    config['val_per_epoch']     = True # if this true, we eval after every [validate_freq] epochs, otherwise by num of batches
-    config['val_by_bleu']       = True
-    config['label_smoothing']   = 0.1
-    config['restore_segments']  = True
     config['normalize_loss']    = ac.LOSS_TOK # don't see any difference between loss_batch and loss_tok
-    # if use adam
+
+    # Hyperparameters for Adam optimizer
     config['beta1']             = 0.9
     config['beta2']             = 0.999
     config['epsilon']           = 1e-8
+
+    # Learning rate
     config['warmup_steps']      = 24000
     config['warmup_style']      = ac.NO_WARMUP
     config['lr']                = 3e-4
@@ -48,18 +90,32 @@ def base_config():
     config['start_lr']          = 1e-8
     config['min_lr']            = 1e-5
     config['patience']          = 3
-    config['src_vocab_size']    = 0
-    config['trg_vocab_size']    = 0
-    config['joint_vocab_size']  = 0
+
+    # Gradient clipping
     config['grad_clip']         = 1.0 # if no clip, just set it to some big value like 1e9
-    config['tie_mode']          = ac.ALL_TIED
-    config['share_vocab']       = False
+    
     config['reload']            = True
-    config['beam_size']         = 4
-    config['beam_alpha']        = 0.6
+
+    ### Validation/stopping options
+    
+    config['max_epochs']        = 100
+    config['validate_freq']     = 1.0 # eval every [this many] epochs
+    config['val_per_epoch']     = True # if this true, we eval after every [validate_freq] epochs, otherwise by num of batches
+    config['val_by_bleu']       = True
+    
+    # Undo BPE segmentation when validating
+    config['restore_segments']  = True
+    
+    # How many of the best models to save
     config['n_best']            = 1
+    
     config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
     config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
+    
+    ### Decoding options
+    
+    config['beam_size']         = 4
+    config['beam_alpha']        = 0.6
 
     return config
 
