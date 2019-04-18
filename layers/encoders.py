@@ -269,4 +269,14 @@ class Decoder(nn.Module):
                 cache[i]['self_att']['k'] = cache[i]['self_att']['k'].reshape(bsz * beam_size, seq_len, -1)[parent_idxs].reshape(bsz, beam_size, seq_len, -1)
                 cache[i]['self_att']['v'] = cache[i]['self_att']['v'].reshape(bsz * beam_size, seq_len, -1)[parent_idxs].reshape(bsz, beam_size, seq_len, -1)
 
+        # if some hypotheses have not reached EOS yet and are cut off by length limit
+        # make sure they are returned
+        if batch_idxs.size()[0] > 0:
+            for j in range(batch_idxs.size()[0]):
+                ret[batch_idxs[j]] = {
+                    'symbols': all_symbols[j].clone(),
+                    'probs': last_probs[j].clone(),
+                    'scores': last_scores[j].clone()
+                }
+
         return ret
