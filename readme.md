@@ -141,6 +141,7 @@ I'm pretty surprised we got much better BLEU than the multilingual baseline. Not
 | [duyvuleo's transformer dynet](https://github.com/duyvuleo/Transformer-DyNet), transformer, ensemble | 29.71 (word-based) | ---   | ---   | ---   | ---   | 26.55 (BPE+ensemble) |
 | [Nguyen and Chiang](https://aclweb.org/anthology/N18-1031), LSTM, word-based                         | 27.5               | ---   | ---   | ---   | ---   | 26.2                 |
 | this-code (BPE)                                                                                      | 31.71              | 33.15 | 37.83 | 38.79 | 40.22 | ---                  |
+| this-code + fixnorm (BPE)                                                                            | 31.77              | 33.39 | 38.15 | 39.08 | 40.33 | ---                  |
 | this-code, word-based                                                                                | 29.47 (4layers)    | ---   | ---   | ---   | ---   | 31.28 (6layers)      |
 
 ## References
