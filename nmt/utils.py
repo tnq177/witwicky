@@ -1,4 +1,4 @@
-import os
+import os, os.path
 import logging
 from datetime import timedelta
 import subprocess
@@ -28,7 +28,8 @@ def get_logger(logfile=None):
 
 def shuffle_file(input_file):
     shuffled_file = input_file + '.shuf'
-    commands = 'bash ./scripts/shuffle_file.sh {} {}'.format(input_file, shuffled_file)
+    scriptdir = os.path.dirname(os.path.abspath(__file__))
+    commands = 'bash {}/../scripts/shuffle_file.sh {} {}'.format(scriptdir, input_file, shuffled_file)
     subprocess.check_call(commands, shell=True)
     subprocess.check_call('mv {} {}'.format(shuffled_file, input_file), shell=True)
 
