@@ -304,9 +304,9 @@ class DataManager(object):
         trg_target_batch = numpy.zeros([batch_size, max_trg_length], dtype=numpy.int32)
 
         for i in range(batch_size):
-            src_input_batch[i] = b_src_input[i] + (max_src_length - b_src_seq_length[i]) * [ac.PAD_ID]
-            trg_input_batch[i] = b_trg_input[i] + (max_trg_length - b_trg_seq_length[i]) * [ac.PAD_ID]
-            trg_target_batch[i] = b_trg_input[i][1:] + [ac.EOS_ID] + (max_trg_length - b_trg_seq_length[i]) * [ac.PAD_ID]
+            src_input_batch[i] = list(b_src_input[i]) + (max_src_length - b_src_seq_length[i]) * [ac.PAD_ID]
+            trg_input_batch[i] = list(b_trg_input[i]) + (max_trg_length - b_trg_seq_length[i]) * [ac.PAD_ID]
+            trg_target_batch[i] = list(b_trg_input[i][1:]) + [ac.EOS_ID] + (max_trg_length - b_trg_seq_length[i]) * [ac.PAD_ID]
 
         return src_input_batch, trg_input_batch, trg_target_batch
 
