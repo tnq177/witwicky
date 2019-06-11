@@ -1,4 +1,4 @@
-import os
+import os, os.path
 import re
 import time
 import shutil
@@ -27,7 +27,8 @@ class Validator(object):
         self.get_cpkt_path = lambda score: join(config['save_to'], '{}-{}.pth'.format(config['model_name'], score))
         self.n_best = config['n_best']
 
-        self.bleu_script = './scripts/multi-bleu.perl'
+        scriptdir = os.path.dirname(os.path.abspath(__file__))
+        self.bleu_script = '{}/../scripts/multi-bleu.perl'.format(scriptdir)
         assert exists(self.bleu_script)
 
         self.save_to = config['save_to']
