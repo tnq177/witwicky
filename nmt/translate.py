@@ -2,9 +2,6 @@ import os
 import time
 
 import numpy
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
 import torch
 
@@ -61,6 +58,10 @@ class Translator(object):
         Change the font in family param below. If the system font is not used, delete matplotlib
         font cache https://github.com/matplotlib/matplotlib/issues/3590
         """
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+
         fig, ax = plt.subplots()
         heatmap = ax.pcolor(mma, cmap=plt.cm.Blues)
 
