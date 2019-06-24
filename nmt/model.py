@@ -87,6 +87,9 @@ class Model(nn.Module):
         else:
             word_embeds = word_embeds * self.embed_scale
 
+        if toks.size()[-1] > self.pos_embedding.size()[-2]:
+            ut.get_logger().error("Sentence length ({}) is longer than max_pos_length ({}); please increase max_pos_length".format(toks.size()[-1], self.pos_embedding.size()[0]))
+
         pos_embeds = self.pos_embedding[:toks.size()[-1], :].unsqueeze(0) # [1, max_len, embed_dim]
         return word_embeds + pos_embeds
 
