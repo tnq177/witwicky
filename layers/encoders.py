@@ -169,8 +169,12 @@ class Decoder(nn.Module):
 
         return x
 
-    def beam_decode(self, encoder_out, encoder_mask, get_input_fn, logprob_fn, bos_id, eos_id, max_len, beam_size=4, alpha=-1):
+    def beam_decode(self, encoder_out, encoder_mask, get_input_fn, logprob_fn, bos_id, eos_id, max_len, beam_size=4, alpha=-1, mode="best"):
         """
+        Arguments:
+        - mode:
+          * "best" = try to find beam_size best hypotheses
+          * "random" = sample beam_size random hypotheses
         Return: a list of dicts
         - ret[i]['symbols'][j][k] is the kth word of jth translation of sentence i
         - ret[i]['probs'][j] is the log-probability of the jth translation of sentence i
@@ -194,8 +198,14 @@ class Decoder(nn.Module):
 
         # Length penalty not needed, because all lengths are 1
 
-        # Select top k hyps to survive to the next time step
-        all_probs, symbols = torch.topk(probs, beam_size, dim=-1) # ([bsz, beam], [bsz, beam])
+        if mode == "best":
+            # Select top k hyps to survive to the next time step
+            all_probs, symbols = torch.topk(probs, beam_size, dim=-1) # ([bsz, beam], [bsz, beam])
+        elif mode == "random":
+            symbols = torch.multinomial(torch.exp(probs), beam_size, replacement=True)
+            all_probs = torch.gather(probs, dim=1, index=symbols)
+        else:
+            raise ValueError("Invalid mode '{}'".format(mode))
 
         last_probs = all_probs.reshape(batch_size, beam_size)
         last_scores = last_probs.clone()
@@ -271,15 +281,25 @@ class Decoder(nn.Module):
             else:
                 beam_scores = beam_probs / length_penalty
 
-            # Select top k hypotheses to survive to next time step
-            beam_probs = beam_probs.reshape(bsz, -1)   # [bsz, beam x V]
-            beam_scores = beam_scores.reshape(bsz, -1) # [bsz, beam x V]
-            max_scores, idxs = torch.topk(beam_scores, beam_size, dim=-1) # ([bsz, beam], [bsz, beam])
-            parent_idxs = idxs // num_classes
-            symbols = (idxs - parent_idxs * num_classes).type(idxs.type()) # [bsz, beam]
+            if mode == "best":
+                # Select top k hypotheses to survive to next time step
+                beam_probs = beam_probs.reshape(bsz, -1)   # [bsz, beam x V]
+                beam_scores = beam_scores.reshape(bsz, -1) # [bsz, beam x V]
+                max_scores, idxs = torch.topk(beam_scores, beam_size, dim=-1) # ([bsz, beam], [bsz, beam])
+                parent_idxs = idxs // num_classes
+                symbols = (idxs - parent_idxs * num_classes).type(idxs.type()) # [bsz, beam]
+                last_probs = torch.gather(beam_probs, -1, idxs)
+                last_scores = max_scores
+            elif mode == "random":
+                symbols = torch.multinomial(torch.exp(probs), 1, replacement=True)
+                # For finished hyps, only generate EOS
+                if finished_mask.any():
+                    symbols[finished_mask] = eos_id
+                last_probs = torch.gather(beam_probs, dim=1, index=symbols).reshape(bsz, -1)
+                last_scores = torch.gather(beam_scores, dim=1, index=symbols).reshape(bsz, -1)
+                symbols = symbols.reshape(bsz, beam_size)
+                parent_idxs = torch.arange(beam_size).unsqueeze(0)
 
-            last_probs = torch.gather(beam_probs, -1, idxs)
-            last_scores = max_scores
             parent_idxs = parent_idxs + torch.arange(bsz).unsqueeze_(1).type(parent_idxs.type()) * beam_size
             parent_idxs = parent_idxs.reshape(-1)
             all_symbols = all_symbols.reshape(bsz * beam_size, -1)[parent_idxs].reshape(bsz, beam_size, -1)

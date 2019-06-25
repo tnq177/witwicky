@@ -133,7 +133,7 @@ class Model(nn.Module):
         logits[:, ~self.trg_vocab_mask] = -1e9
         return logits
 
-    def beam_decode(self, src_toks):
+    def beam_decode(self, src_toks, mode='best'):
         """Translate a minibatch of sentences. 
 
         Arguments: src_toks[i,j] is the jth word of sentence i.
@@ -159,4 +159,4 @@ class Model(nn.Module):
         def logprob(decoder_output):
             return F.log_softmax(self.logit_fn(decoder_output), dim=-1)
 
-        return self.decoder.beam_decode(encoder_outputs, encoder_mask, get_trg_inp, logprob, ac.BOS_ID, ac.EOS_ID, max_lengths, beam_size=self.config['beam_size'], alpha=self.config['beam_alpha'])
+        return self.decoder.beam_decode(encoder_outputs, encoder_mask, get_trg_inp, logprob, ac.BOS_ID, ac.EOS_ID, max_lengths, beam_size=self.config['beam_size'], alpha=self.config['beam_alpha'], mode=mode)
