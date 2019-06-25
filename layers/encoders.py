@@ -178,6 +178,8 @@ class Decoder(nn.Module):
         """
         # first step, beam=1
         batch_size = encoder_out.size()[0]
+
+        # The first input symbol is BOS
         inp = get_input_fn(torch.tensor([bos_id] * batch_size).reshape(batch_size, 1), 0) # [bsz, 1, D]
         cache = {'encoder_mask': encoder_mask.unsqueeze_(1)} # [bsz, beam, 1, 1, length]
         for i in range(self.num_layers):
@@ -185,9 +187,14 @@ class Decoder(nn.Module):
             cache[i]['enc_dec_k'] = self.enc_dec_atts[i].in_proj_k(encoder_out).unsqueeze_(1)
             cache[i]['enc_dec_v'] = self.enc_dec_atts[i].in_proj_v(encoder_out).unsqueeze_(1)
 
+        # Compute log-probabilities of all extensions of initial hyps
         y = self.beam_step(inp, cache).squeeze_(1) # [bsz, D]
         probs = logprob_fn(y) # [bsz, V]
-        probs[:, eos_id] = float('-inf') # no <eos> now
+        probs[:, eos_id] = float('-inf') # no <eos> now to avoid empty output
+
+        # Length penalty not needed, because all lengths are 1
+
+        # Select top k hyps to survive to the next time step
         all_probs, symbols = torch.topk(probs, beam_size, dim=-1) # ([bsz, beam], [bsz, beam])
 
         last_probs = all_probs.reshape(batch_size, beam_size)
@@ -201,12 +208,14 @@ class Decoder(nn.Module):
             cache[i]['enc_dec_k'] = cache[i]['enc_dec_k'].expand(-1, beam_size, -1, -1)
             cache[i]['enc_dec_v'] = cache[i]['enc_dec_v'].expand(-1, beam_size, -1, -1)
 
-        num_classes = probs.size()[-1]
+        num_classes = probs.size()[-1] # V
         not_eos_mask = (torch.arange(num_classes).reshape(1, -1) != eos_id).type(encoder_mask.type())
         maximum_length = max_len.max().item()
         ret = [None] * batch_size
         batch_idxs = torch.arange(batch_size)
         for time_step in range(1, maximum_length + 1):
+
+            # Add finished outputs to ret and remove them from beam
             surpass_length = (max_len < time_step) + (time_step == maximum_length)
             finished_decoded = torch.sum(all_symbols[:, :, -1] == eos_id, -1) == beam_size
             finished_sents = ((surpass_length + finished_decoded) >= 1).type(encoder_mask.type())
@@ -235,12 +244,17 @@ class Decoder(nn.Module):
                 break
 
             bsz = all_symbols.size()[0]
+
+            # Use last output symbol as next input
             last_symbols = all_symbols[:, :, -1]
             inps = get_input_fn(last_symbols, time_step).reshape(bsz * beam_size, -1).unsqueeze_(1) # [bsz x beam, 1, D]
             ys = self.beam_step(inps, cache).squeeze_(1) # [bsz x beam, D]
             probs = logprob_fn(ys) # [bsz x beam, V]
             last_probs = last_probs.reshape(-1, 1) # [bsz x beam, 1]
             last_scores = last_scores.reshape(-1, 1)
+
+            # Finished hypotheses are zeroed out
+            # For unfinished hypotheses, update log-probs and scores
             length_penalty = 1.0 if alpha == -1 else (5.0 + time_step + 1.0) ** alpha / 6.0 ** alpha
             finished_mask = (last_symbols.reshape(-1) == eos_id).type(encoder_mask.type())
             beam_probs = probs.clone()
@@ -257,8 +271,9 @@ class Decoder(nn.Module):
             else:
                 beam_scores = beam_probs / length_penalty
 
-            beam_probs = beam_probs.reshape(bsz, -1)
-            beam_scores = beam_scores.reshape(bsz, -1)
+            # Select top k hypotheses to survive to next time step
+            beam_probs = beam_probs.reshape(bsz, -1)   # [bsz, beam x V]
+            beam_scores = beam_scores.reshape(bsz, -1) # [bsz, beam x V]
             max_scores, idxs = torch.topk(beam_scores, beam_size, dim=-1) # ([bsz, beam], [bsz, beam])
             parent_idxs = idxs // num_classes
             symbols = (idxs - parent_idxs * num_classes).type(idxs.type()) # [bsz, beam]
