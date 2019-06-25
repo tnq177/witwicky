@@ -94,3 +94,36 @@ def normalize(x, scale=True):
     if scale:
         std = std * x.size()[-1] ** 0.5
     return (x - mean) / std
+
+
+def resample_using_scores(samples):
+    """Sample from model including length penalty. Destructive.
+
+    Arguments: 
+    - samples: samples from model without length penalty, as returned
+    by Decoder.beam_decode
+
+    Return:
+    - samples based on scores, in same format.
+    """
+
+    # Metropolis-Hastings
+    for sent in samples:
+        n = len(sent['symbols'])
+        flips = torch.log(torch.rand(n, device=sent['scores'].device))
+        for t in range(n):
+            if t == 0:
+                accept = 1.
+            else:
+                accept = min(0., sent['scores'][t] - score + prob - sent['probs'][t])
+            if flips[t] <= accept:
+                score = sent['scores'][t]
+                prob = sent['probs'][t]
+                symbols = sent['symbols'][t]
+            else:
+                # Reject by reusing previous sample
+                sent['scores'][t] = score
+                sent['probs'][t] = prob
+                sent['symbols'][t] = symbols
+
+    return samples
