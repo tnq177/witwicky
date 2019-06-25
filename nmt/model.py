@@ -159,4 +159,13 @@ class Model(nn.Module):
         def logprob(decoder_output):
             return F.log_softmax(self.logit_fn(decoder_output), dim=-1)
 
-        return self.decoder.beam_decode(encoder_outputs, encoder_mask, get_trg_inp, logprob, ac.BOS_ID, ac.EOS_ID, max_lengths, beam_size=self.config['beam_size'], alpha=self.config['beam_alpha'])
+        if self.config['length_model'] == 'gnmt':
+            length_model = ut.gnmt_length_model(self.config['length_alpha'])
+        elif self.config['length_model'] == 'linear':
+            length_model = lambda t, p: p + self.config['length_alpha']
+        elif self.config['length_model'] == 'none':
+            length_model = lambda t, p: p
+        else:
+            raise ValueError("invalid length_model '{}'".format(self.config['length_model']))
+
+        return self.decoder.beam_decode(encoder_outputs, encoder_mask, get_trg_inp, logprob, length_model, ac.BOS_ID, ac.EOS_ID, max_lengths, beam_size=self.config['beam_size'])
