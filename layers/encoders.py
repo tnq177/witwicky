@@ -170,6 +170,12 @@ class Decoder(nn.Module):
         return x
 
     def beam_decode(self, encoder_out, encoder_mask, get_input_fn, logprob_fn, bos_id, eos_id, max_len, beam_size=4, alpha=-1):
+        """
+        Return: a list of dicts
+        - ret[i]['symbols'][j][k] is the kth word of jth translation of sentence i
+        - ret[i]['probs'][j] is the log-probability of the jth translation of sentence i
+        - ret[i]['scores'][j] is the score (including length penalty) of the jth translation of sentence i
+        """
         # first step, beam=1
         batch_size = encoder_out.size()[0]
         inp = get_input_fn(torch.tensor([bos_id] * batch_size).reshape(batch_size, 1), 0) # [bsz, 1, D]

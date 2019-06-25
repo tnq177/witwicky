@@ -134,6 +134,12 @@ class Model(nn.Module):
         return logits
 
     def beam_decode(self, src_toks):
+        """Translate a minibatch of sentences. 
+
+        Arguments: src_toks[i,j] is the jth word of sentence i.
+
+        Return: See encoders.Decoder.beam_decode
+        """
         encoder_mask = (src_toks == ac.PAD_ID).unsqueeze(1).unsqueeze(2) # [bsz, 1, 1, max_src_len]
         encoder_inputs = self.get_input(src_toks, is_src=True)
         encoder_outputs = self.encoder(encoder_inputs, encoder_mask)

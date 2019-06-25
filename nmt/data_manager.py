@@ -411,6 +411,15 @@ class DataManager(object):
                     yield (torch.from_numpy(x).type(torch.long) for x in batch_data)
 
     def get_trans_input(self, input_file):
+        """Read lines from input_file and convert them to minibatches.
+
+        The size of each minibatch is batch_size//beam_size.
+
+        Return: A generator over (src_index, original_idxs) pairs,
+        where src_index[i,j] is the jth word of sentence i, and
+        original_idxs[i] is the ith sentence's (0-based) line number
+        in the file.
+        """
         data = []
         data_lengths = []
         with open(input_file, 'r') as f:
