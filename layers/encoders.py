@@ -169,7 +169,8 @@ class Decoder(nn.Module):
 
         return x
 
-    def beam_decode(self, encoder_out, encoder_mask, get_input_fn, logprob_fn, bos_id, eos_id, max_len, beam_size=4, alpha=-1, mode="best"):
+
+    def beam_decode(self, encoder_out, encoder_mask, get_input_fn, logprob_fn, length_fn, bos_id, eos_id, max_len, beam_size=4, mode="best"):
         """
         Arguments:
         - mode:
@@ -265,7 +266,6 @@ class Decoder(nn.Module):
 
             # Finished hypotheses are zeroed out
             # For unfinished hypotheses, update log-probs and scores
-            length_penalty = 1.0 if alpha == -1 else (5.0 + time_step + 1.0) ** alpha / 6.0 ** alpha
             finished_mask = (last_symbols.reshape(-1) == eos_id).type(encoder_mask.type())
             beam_probs = probs.clone()
             if finished_mask.any():
@@ -277,9 +277,9 @@ class Decoder(nn.Module):
             beam_scores = beam_probs.clone()
             if finished_mask.any():
                 beam_scores[finished_mask] = last_scores[finished_mask].expand(-1, num_classes).masked_fill(not_eos_mask, float('-inf'))
-                beam_scores[~finished_mask] = beam_probs[~finished_mask] / length_penalty
+                beam_scores[~finished_mask] = length_fn(time_step, beam_probs[~finished_mask])
             else:
-                beam_scores = beam_probs / length_penalty
+                beam_scores = length_fn(time_step, beam_probs)
 
             if mode == "best":
                 # Select top k hypotheses to survive to next time step

@@ -21,7 +21,6 @@ class Validator(object):
 
         self.data_manager = data_manager
         self.restore_segments = config['restore_segments']
-        self.beam_alpha = config['beam_alpha']
         self.val_by_bleu = config['val_by_bleu']
 
         self.get_cpkt_path = lambda score: join(config['save_to'], '{}-{}.pth'.format(config['model_name'], score))
