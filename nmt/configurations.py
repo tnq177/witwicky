@@ -111,11 +111,20 @@ def base_config():
     config['val_trans_out']     = os.path.join(config['save_to'], 'validation_trans.txt')
     config['val_beam_out']      = os.path.join(config['save_to'], 'beam_trans.txt')
 
+    ### Length model
+
+    # Choices are:
+    # - gnmt: https://arxiv.org/abs/1609.08144 equation 14
+    # - linear: constant reward per word
+    # - none
+    config['length_model']      = 'gnmt'
+    # For gnmt, this is the exponent; for linear, this is the strength of the reward
+    config['length_alpha']      = 0.6
+
     ### Decoding options
 
     config['beam_size']         = 4
-    config['beam_alpha']        = 0.6
-
+    
     return config
 
 
