@@ -263,12 +263,16 @@ class Decoder(nn.Module):
             else:
                 beam_probs = last_probs + probs
 
+            # Compute scores including length penalty
+            # Length is time_step + (1 if current output word is not EOS)
             beam_scores = beam_probs.clone()
             if finished_mask.any():
                 beam_scores[finished_mask] = last_scores[finished_mask].expand(-1, num_classes).masked_fill(not_eos_mask, float('-inf'))
-                beam_scores[~finished_mask] = length_fn(time_step, beam_probs[~finished_mask])
+                beam_scores[~finished_mask] = length_fn(time_step+1, beam_probs[~finished_mask])
+                beam_scores[~finished_mask, eos_id] = length_fn(time_step, beam_probs[~finished_mask, eos_id])
             else:
-                beam_scores = length_fn(time_step, beam_probs)
+                beam_scores = length_fn(time_step+1, beam_probs)
+                beam_scores[:, eos_id] = length_fn(time_step, beam_probs[:, eos_id])
 
             # Select top k hypotheses to survive to next time step
             beam_probs = beam_probs.reshape(bsz, -1)   # [bsz, beam x V]
