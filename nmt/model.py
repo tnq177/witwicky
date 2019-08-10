@@ -162,7 +162,7 @@ class Model(nn.Module):
         if self.config['length_model'] == 'gnmt':
             length_model = ut.gnmt_length_model(self.config['length_alpha'])
         elif self.config['length_model'] == 'linear':
-            length_model = lambda t, p: p + self.config['length_alpha']
+            length_model = lambda t, p: p + self.config['length_alpha'] * t
         elif self.config['length_model'] == 'none':
             length_model = lambda t, p: p
         else:
