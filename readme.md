@@ -1,6 +1,9 @@
 # Witwicky: An implementation of Transformer in PyTorch
 
-[Toan Q. Nguyen](http://tnq177.github.io), University of Notre Dame
+[Toan Q. Nguyen](http://tnq177.github.io), University of Notre Dame  
+
+__UPDATE__: Please check out new paper (which is partly based on this work) which has further discussions on TrueRes, NormRes, weight initializations and normalization here [paper](https://arxiv.org/pdf/1910.05895.pdf), [code](https://github.com/tnq177/transformers_without_tears).  
+
 
 An implementation of Vaswani et al.'s [Attention Is All You Need](https://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf) with [PyTorch](https://pytorch.org). An [early version](https://github.com/tnq177/nmt_text_from_non_native_speaker) of this code was used in our paper [Neural Machine Translation of Text from Non-Native Speakers
 ](https://arxiv.org/abs/1808.06267).  
