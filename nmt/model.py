@@ -21,14 +21,16 @@ class Model(nn.Module):
         tie_mode = self.config['tie_mode']
         fix_norm = self.config['fix_norm']
         max_pos_length = self.config['max_pos_length']
-        learned_pos = self.config['learned_pos']
 
-        # get positonal embedding
-        if not learned_pos:
-            self.pos_embedding = ut.get_positional_encoding(embed_dim, max_pos_length)
-        else:
-            self.pos_embedding = Parameter(torch.Tensor(max_pos_length, embed_dim))
-            nn.init.normal_(self.pos_embedding, mean=0, std=embed_dim ** -0.5)
+        import math
+
+        assert embed_dim % 2 == 0
+        self.pos_phase = Parameter(torch.full([embed_dim//2], math.pi/2))
+        self.pos_freq = Parameter(-torch.pow(10000., -torch.arange(embed_dim//2).float()/(embed_dim//2)))
+        self.enc_pos_scale = Parameter(torch.Tensor([1.]))
+        self.enc_pos_initial = Parameter(torch.full([embed_dim//2], 0))
+        self.enc_pos_freq = Parameter(-torch.pow(10000., -torch.arange(embed_dim//2).float()/(embed_dim//2)))
+        self.enc_pos_final = Parameter(torch.full([embed_dim//2], 0))
 
         # get word embeddings
         src_vocab_size, trg_vocab_size = ut.get_vocab_sizes(self.config)
@@ -87,10 +89,25 @@ class Model(nn.Module):
         else:
             word_embeds = word_embeds * self.embed_scale
 
-        if toks.size()[-1] > self.pos_embedding.size()[-2]:
-            ut.get_logger().error("Sentence length ({}) is longer than max_pos_length ({}); please increase max_pos_length".format(toks.size()[-1], self.pos_embedding.size()[0]))
+        bsz, n = toks.size()
+        d = self.config['embed_dim']
 
-        pos_embeds = self.pos_embedding[:toks.size()[-1], :].unsqueeze(0) # [1, max_len, embed_dim]
+        # compute position embeddings
+        j = torch.arange(n).to(self.pos_phase.device).float().unsqueeze(1)
+        assert j.size() == (n, 1)
+        x = self.enc_pos_initial + j * self.enc_pos_freq
+        assert x.size() == (n, d//2)
+        forward = torch.stack([torch.cos(x), torch.sin(x)], 2).reshape(n, d).unsqueeze(0)
+        assert forward.size() == (1, n, d)
+
+        lengths = torch.sum(toks != ac.PAD_ID, dim=1, keepdim=True).float().unsqueeze(2)
+        assert lengths.size() == (bsz, 1, 1)
+        x = self.enc_pos_final - (lengths - j) * self.enc_pos_freq
+        assert x.size() == (bsz, n, d//2)
+        backward = torch.stack([torch.cos(x), torch.sin(x)], 3).reshape(bsz, n, d)
+        pos_embeds = self.enc_pos_scale * forward * backward
+        assert pos_embeds.size() == (bsz, n, d)
+
         return word_embeds + pos_embeds
 
     def forward(self, src_toks, trg_toks, targets):
@@ -145,6 +162,13 @@ class Model(nn.Module):
         encoder_outputs = self.encoder(encoder_inputs, encoder_mask)
         max_lengths = torch.sum(src_toks != ac.PAD_ID, dim=-1).type(src_toks.type()) + 50
 
+        n = self.config['max_pos_length']
+        # compute position embeddings
+        device = self.pos_phase.device
+        j = torch.arange(n, device=device).float().unsqueeze(1) # n x 1
+        x = self.pos_phase + j * self.pos_freq                  # n x d//2
+        forward = torch.stack([torch.cos(x), torch.sin(x)], 2).reshape(n, -1) # n x d
+
         def get_trg_inp(ids, time_step):
             ids = ids.type(src_toks.type())
             word_embeds = self.trg_embedding(ids)
@@ -153,7 +177,7 @@ class Model(nn.Module):
             else:
                 word_embeds = word_embeds * self.embed_scale
 
-            pos_embeds = self.pos_embedding[time_step, :].reshape(1, 1, -1)
+            pos_embeds = forward[time_step, :].reshape(1, 1, -1)
             return word_embeds + pos_embeds
 
         def logprob(decoder_output):
